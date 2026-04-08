@@ -379,7 +379,7 @@
 
     const PROXY = 'https://cors-anywhere.herokuapp.com/';
     // 더 많이 가져와서 필터 후 표시 (display=100)
-    const url = `${PROXY}https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(q)}&display=20&sort=date`;
+    const url = `${PROXY}https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(q)}&display=100&sort=date`;
 
     try {
       const res = await fetch(url, {
