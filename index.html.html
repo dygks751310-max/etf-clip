@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF 뉴스 클리퍼</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EE;
+    --surface: #FDFCF9;
+    --surface2: #EDEAE3;
+    --border: #D8D4CB;
+    --text: #1A1814;
+    --text2: #6B6760;
+    --text3: #9E9A93;
+    --accent: #2B5CE6;
+    --accent-bg: #EBF0FD;
+    --green: #1A6B3C;
+    --green-bg: #E6F4EC;
+    --amber: #7A4A0A;
+    --amber-bg: #FDF0DC;
+    --red: #8B1F1F;
+    --red-bg: #FAEBEB;
+    --purple: #4A2B8B;
+    --purple-bg: #EEE9FB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* API 키 설정 배너 */
+  .api-banner {
+    background: var(--amber-bg);
+    border-bottom: 1px solid #E8C87A;
+    padding: 0.6rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--amber);
+  }
+  .api-banner.hidden { display: none; }
+  .api-banner input {
+    flex: 1;
+    max-width: 280px;
+    padding: 4px 10px;
+    border: 1px solid #E8C87A;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    background: #fff;
+    color: var(--text);
+    outline: none;
+  }
+  .api-banner button {
+    padding: 4px 12px;
+    background: var(--amber);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap;
+  }
+  .api-banner a { color: var(--amber); font-weight: 500; }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .logo { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .api-status { font-size: 11px; font-family: 'DM Mono', monospace; }
+  .api-status.ok { color: var(--green); }
+  .api-status.no { color: var(--amber); }
+  .header-date { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 2rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .stat-value.sm { font-size: 13px; font-weight: 500; padding-top: 4px; }
+
+  /* Search */
+  .search-wrap { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .search-wrap input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.65rem 1rem; font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif; color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .btn-search {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 0.65rem 1.25rem; font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 500; cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+  }
+  .btn-search:hover { opacity: 0.85; }
+  .btn-search:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Tags */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2rem; }
+  .tag {
+    font-size: 12px; padding: 5px 12px; border-radius: 99px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+    cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .tag:hover { border-color: var(--accent); color: var(--accent); }
+  .tag.active { background: var(--accent-bg); color: var(--accent); border-color: transparent; font-weight: 500; }
+
+  /* Section header */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-title { font-size: 13px; font-weight: 500; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  /* News cards */
+  .news-list { display: flex; flex-direction: column; gap: 10px; }
+  .news-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.25rem 1.5rem; transition: border-color 0.15s, box-shadow 0.15s;
+    animation: fadeUp 0.25s ease both;
+  }
+  .news-card:hover { border-color: #B8B4AB; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .card-title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.45; }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { color: var(--accent); }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; font-weight: 500; }
+  .b-naver { background: var(--green-bg); color: var(--green); }
+  .b-live  { background: var(--accent-bg); color: var(--accent); }
+
+  .card-summary { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
+  .card-bottom { display: flex; justify-content: space-between; align-items: center; }
+  .card-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .btn-link {
+    font-size: 12px; padding: 4px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent; color: var(--text2);
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif; text-decoration: none;
+    transition: all 0.15s; display: inline-block;
+  }
+  .btn-link:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Placeholder / empty */
+  .placeholder { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+  .placeholder .icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* Spinner */
+  .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error box */
+  .error-box {
+    background: var(--red-bg); border: 1px solid #E8AAAA; border-radius: 10px;
+    padding: 1.25rem 1.5rem; font-size: 13px; color: var(--red); line-height: 1.7;
+  }
+  .error-box strong { font-weight: 700; display: block; margin-bottom: 4px; }
+
+  /* CORS 안내 */
+  .proxy-note {
+    background: var(--surface2); border-radius: 10px; padding: 1.25rem 1.5rem;
+    font-size: 13px; color: var(--text2); line-height: 1.8; margin-top: 10px;
+  }
+  .proxy-note strong { color: var(--text); font-weight: 500; }
+  .proxy-note code {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px; color: var(--accent);
+  }
+
+  @media (max-width: 600px) {
+    main { padding: 1.25rem; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats .stat:last-child { display: none; }
+    .api-banner { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- API 키 설정 배너 -->
+<div class="api-banner" id="api-banner">
+  <span>⚠ 네이버 API 키를 입력하세요</span>
+  <input type="text" id="client-id-input" placeholder="Client ID" />
+  <input type="text" id="client-secret-input" placeholder="Client Secret" />
+  <button onclick="saveApiKey()">저장</button>
+  <a href="https://developers.naver.com/apps/#/register" target="_blank">키 발급 →</a>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">ETF<span>.</span>clip</div>
+    <div class="header-right">
+      <div class="api-status no" id="api-status">● API 미연결</div>
+      <div class="header-date" id="today-date"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">수집된 뉴스</div>
+      <div class="stat-value" id="stat-count">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">마지막 검색</div>
+      <div class="stat-value sm" id="stat-query">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">검색 시각</div>
+      <div class="stat-value sm" id="stat-time">—</div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input type="text" id="query" placeholder="예: KODEX 반도체, ETF 배당, 신규 상장" value="국내 ETF 뉴스" />
+    <button class="btn-search" id="search-btn" onclick="doSearch()">검색</button>
+  </div>
+
+  <div class="tags">
+    <span class="tag active" onclick="setTag(this,'전체')">전체</span>
+    <span class="tag" onclick="setTag(this,'KODEX')">KODEX</span>
+    <span class="tag" onclick="setTag(this,'TIGER')">TIGER</span>
+    <span class="tag" onclick="setTag(this,'ACE')">ACE</span>
+    <span class="tag" onclick="setTag(this,'KBSTAR')">KBSTAR</span>
+    <span class="tag" onclick="setTag(this,'배당')">배당</span>
+    <span class="tag" onclick="setTag(this,'신규상장')">신규 상장</span>
+    <span class="tag" onclick="setTag(this,'반도체AI')">반도체·AI</span>
+    <span class="tag" onclick="setTag(this,'연금')">연금</span>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title"><span class="dot"></span> 뉴스 클리핑 <span style="font-size:11px;color:var(--text3);font-weight:400;">네이버 뉴스 실시간</span></div>
+    <div style="font-size:11px; color:var(--text3);" id="result-count"></div>
+  </div>
+
+  <div class="news-list" id="news-list">
+    <div class="placeholder">
+      <div class="icon">🔑</div>
+      위에서 네이버 API 키를 입력한 뒤 검색해보세요.
+    </div>
+  </div>
+</main>
+
+<script>
+  // 날짜
+  const today = new Date();
+  document.getElementById('today-date').textContent =
+    today.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+
+  // API 키 로드 (localStorage)
+  let CLIENT_ID = localStorage.getItem('naver_client_id') || '';
+  let CLIENT_SECRET = localStorage.getItem('naver_client_secret') || '';
+  updateApiStatus();
+
+  function updateApiStatus() {
+    const ok = CLIENT_ID && CLIENT_SECRET;
+    document.getElementById('api-status').textContent = ok ? '● API 연결됨' : '● API 미연결';
+    document.getElementById('api-status').className = 'api-status ' + (ok ? 'ok' : 'no');
+    document.getElementById('api-banner').className = 'api-banner' + (ok ? ' hidden' : '');
+    if (ok) {
+      document.getElementById('client-id-input').value = CLIENT_ID;
+      document.getElementById('client-secret-input').value = CLIENT_SECRET;
+    }
+  }
+
+  function saveApiKey() {
+    const id = document.getElementById('client-id-input').value.trim();
+    const secret = document.getElementById('client-secret-input').value.trim();
+    if (!id || !secret) { alert('Client ID와 Client Secret을 모두 입력해주세요.'); return; }
+    CLIENT_ID = id;
+    CLIENT_SECRET = secret;
+    localStorage.setItem('naver_client_id', id);
+    localStorage.setItem('naver_client_secret', secret);
+    updateApiStatus();
+    doSearch();
+  }
+
+  // 태그별 설정: 검색어(API), 제목 필터 키워드, 제목 필터 여부
+  const TAG_CONFIG = {
+    '전체':     { query: 'ETF 국내',         titleFilter: false, keywords: [] },
+    'KODEX':    { query: 'KODEX ETF',         titleFilter: true,  keywords: ['KODEX'] },
+    'TIGER':    { query: 'TIGER ETF',         titleFilter: true,  keywords: ['TIGER'] },
+    'ACE':      { query: 'ACE ETF',           titleFilter: true,  keywords: ['ACE'] },
+    'KBSTAR':   { query: 'KBSTAR ETF',        titleFilter: true,  keywords: ['KBSTAR'] },
+    '배당':     { query: 'ETF 배당 분배금',   titleFilter: false, keywords: ['배당', '분배', '분배금', '월배당', '고배당'] },
+    '신규상장': { query: 'ETF 상장 출시',     titleFilter: true,  keywords: ['상장', '출시', '신규', '런칭', '새로'] },
+    '반도체AI': { query: 'ETF 반도체 AI',     titleFilter: false, keywords: ['반도체', 'AI', '인공지능', 'HBM', '엔비디아'] },
+    '연금':     { query: 'ETF 연금 IRP 퇴직', titleFilter: false, keywords: ['연금', 'IRP', '퇴직', 'ISA', '절세'] },
+  };
+
+  let currentTagKey = '전체';
+
+  function setTag(el, tagKey) {
+    document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    currentTagKey = tagKey;
+    const cfg = TAG_CONFIG[tagKey] || TAG_CONFIG['전체'];
+    document.getElementById('query').value = cfg.query;
+    doSearch();
+  }
+
+  function stripHtml(html) {
+    return html.replace(/<[^>]+>/g, '').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#039;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  }
+
+  function formatDate(pubDate) {
+    try {
+      const d = new Date(pubDate);
+      return d.toLocaleDateString('ko-KR', { month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    } catch { return pubDate || ''; }
+  }
+
+  // 제목 기준 필터링
+  function applyFilter(items, tagKey) {
+    const cfg = TAG_CONFIG[tagKey];
+    if (!cfg || !cfg.titleFilter || !cfg.keywords.length) return items;
+    return items.filter(item => {
+      const title = stripHtml(item.title).toLowerCase();
+      return cfg.keywords.some(kw => title.includes(kw.toLowerCase()));
+    });
+  }
+
+  // 제목에서 키워드 하이라이트
+  function highlight(text, tagKey) {
+    const cfg = TAG_CONFIG[tagKey];
+    if (!cfg || !cfg.keywords.length) return text;
+    let result = text;
+    cfg.keywords.forEach(kw => {
+      const re = new RegExp(`(${kw})`, 'gi');
+      result = result.replace(re, '<mark style="background:var(--accent-bg);color:var(--accent);border-radius:3px;padding:0 2px;">$1</mark>');
+    });
+    return result;
+  }
+
+  async function doSearch() {
+    const q = document.getElementById('query').value.trim();
+    if (!q) return;
+
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      document.getElementById('news-list').innerHTML = `
+        <div class="placeholder">
+          <div class="icon">🔑</div>
+          상단에서 네이버 API 키를 먼저 입력해주세요.
+        </div>`;
+      return;
+    }
+
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true;
+    btn.textContent = '검색 중...';
+    document.getElementById('news-list').innerHTML = '<div class="placeholder"><div class="spinner"></div></div>';
+
+    const PROXY = 'https://cors-anywhere.herokuapp.com/';
+    // 더 많이 가져와서 필터 후 표시 (display=20)
+    const url = `${PROXY}https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(q)}&display=20&sort=date`;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'X-Naver-Client-Id': CLIENT_ID,
+          'X-Naver-Client-Secret': CLIENT_SECRET,
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`API 오류 ${res.status}: ${errText}`);
+      }
+
+      const data = await res.json();
+      const raw = data.items || [];
+      // 태그 필터 적용
+      const filtered = applyFilter(raw, currentTagKey);
+      renderCards(filtered, q, raw.length);
+    } catch (err) {
+      renderError(err, q);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '검색';
+    }
+  }
+
+  function renderCards(items, query, totalFetched) {
+    document.getElementById('stat-count').textContent = items.length;
+    document.getElementById('stat-query').textContent = query.length > 12 ? query.slice(0,12)+'…' : query;
+    document.getElementById('stat-time').textContent =
+      new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+
+    const cfg = TAG_CONFIG[currentTagKey];
+    const filterNote = cfg && cfg.titleFilter
+      ? ` <span style="font-size:10px;color:var(--text3);">(제목 필터 적용 · 전체 ${totalFetched}건 중)</span>`
+      : '';
+    document.getElementById('result-count').innerHTML = `${items.length}건${filterNote}`;
+
+    if (!items.length) {
+      document.getElementById('news-list').innerHTML = `
+        <div class="placeholder">
+          <div class="icon">📭</div>
+          조건에 맞는 뉴스가 없습니다.<br>
+          <span style="font-size:12px;">검색어를 직접 입력하거나 다른 태그를 눌러보세요.</span>
+        </div>`;
+      return;
+    }
+
+    const html = items.map((item, i) => {
+      const title   = stripHtml(item.title);
+      const desc    = stripHtml(item.description);
+      const link    = item.originallink || item.link;
+      const date    = formatDate(item.pubDate);
+      const outlet  = (item.originallink || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0] || '네이버 뉴스';
+      const hlTitle = highlight(title, currentTagKey);
+      const hlDesc  = highlight(desc, currentTagKey);
+      return `
+        <div class="news-card" style="animation-delay:${i*0.05}s">
+          <div class="card-top">
+            <div class="card-title"><a href="${link}" target="_blank" rel="noopener">${hlTitle}</a></div>
+            <span class="badge b-live">실시간</span>
+          </div>
+          <div class="card-summary">${hlDesc || '본문을 불러올 수 없습니다.'}</div>
+          <div class="card-bottom">
+            <span class="card-meta">${date} · ${outlet}</span>
+            <a class="btn-link" href="${link}" target="_blank" rel="noopener">기사 보기 →</a>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('news-list').innerHTML = `<div class="news-list">${html}</div>`;
+  }
+
+  function renderError(err, query) {
+    document.getElementById('stat-count').textContent = '0';
+    document.getElementById('result-count').textContent = '';
+    document.getElementById('news-list').innerHTML = `
+      <div class="error-box">
+        <strong>검색 중 오류가 발생했습니다</strong>
+        ${err.message}
+      </div>
+      <div class="proxy-note">
+        <strong>💡 CORS 문제 안내</strong><br>
+        네이버 뉴스 API는 브라우저에서 직접 호출 시 보안 정책(CORS)으로 막힐 수 있어요.<br><br>
+        <strong>해결 방법 3가지:</strong><br>
+        1. <strong>cors-anywhere 데모 허용</strong> —
+           <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="color:var(--accent)">이 링크</a>에서 "Request temporary access" 클릭 후 재시도<br>
+        2. <strong>로컬 프록시 서버</strong> — Node.js 등으로 간단한 프록시 서버를 띄워서 API 호출<br>
+        3. <strong>서버 배포</strong> — Vercel/Netlify Functions로 서버사이드에서 API 호출 (권장)
+      </div>`;
+  }
+</script>
+</body>
+</html>
